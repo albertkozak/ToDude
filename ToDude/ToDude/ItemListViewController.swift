@@ -12,10 +12,13 @@ import SwipeCellKit
 
 class ItemListViewController: UITableViewController {
   var items = [Item]()
+  var category: Category?
+  
   let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
   
   @IBAction func addItemButtonTapped(_ sender: UIBarButtonItem) {
     // we need this in order to access the text field data outside of the 'addTextField' scope below
+    
       var tempTextField = UITextField()
       
       // create a UIAlertController object
@@ -30,6 +33,7 @@ class ItemListViewController: UITableViewController {
         if let text = tempTextField.text {
           // set the item attributes
           newItem.title = text
+          newItem.category = self.category
           newItem.completed = false
           
           // append the item to our items array
@@ -68,6 +72,11 @@ class ItemListViewController: UITableViewController {
     // create a new fetch request of type NSFetchRequest<Item> - you must provide a type
     let fetchRequest: NSFetchRequest<Item> = Item.fetchRequest()
     
+    // a predicate allows us to create a filter or mapping for our items
+    let predicate = NSPredicate(format: "category.name MATCHES %@", category?.name ?? "")
+    
+    fetchRequest.predicate = predicate
+
     // wrap our try statement below in a do/catch block so we can handle any errors
     do {
       // fetch our items using our fetch request, save them in our items array
@@ -135,22 +144,26 @@ extension ItemListViewController: UISearchBarDelegate {
     
     // a predicate allows us to create a filter or mapping for our items
     // [c] means ignore case
-    let predicate = NSPredicate(format: "title CONTAINS[c] %@", searchText)
+    let titlePredicate = NSPredicate(format: "title CONTAINS[c] %@", searchText)
+    let categoryPredicate = NSPredicate(format: "category.name MATCHES %@", category?.name ?? "")
     
+    // a compound predicate allows you to combine multiple predicates on the same request
+    let compoundPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, titlePredicate])
+
     // the sort descriptor allows us to tell the request how we want our data sorted
     let sortDescriptor = NSSortDescriptor(key: "title", ascending: true)
-    
+
     // set the predicate and sort descriptors for on the request
-    fetchRequest.predicate = predicate
+    fetchRequest.predicate = compoundPredicate
     fetchRequest.sortDescriptors = [sortDescriptor]
-    
+
     // retrieve the items with the request we created
     do {
       items = try context.fetch(fetchRequest)
     } catch {
       print("Error fetching items: \(error)")
     }
-    
+
     // reload our table with our new data
     tableView.reloadData()
   }
