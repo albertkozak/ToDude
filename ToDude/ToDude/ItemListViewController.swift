@@ -10,7 +10,7 @@ import UIKit
 import CoreData
 import SwipeCellKit
 
-class ItemListViewController: UITableViewController, SwipeTableViewCellDelegate {
+class ItemListViewController: UITableViewController {
   var items = [Item]()
   let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
   
@@ -93,7 +93,7 @@ class ItemListViewController: UITableViewController, SwipeTableViewCellDelegate 
   
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
       let cell = tableView.dequeueReusableCell(withIdentifier: "itemCell", for: indexPath) as! SwipeTableViewCell
-      cell.delegate = self
+      cell.delegate = self as? SwipeTableViewCellDelegate
       
       let item = items[indexPath.row]
       
@@ -108,26 +108,50 @@ class ItemListViewController: UITableViewController, SwipeTableViewCellDelegate 
       item.completed = !item.completed
       saveItems()
     }
-  
-  func tableView(_ tableView: UITableView, editActionsForRowAt indexPath: IndexPath, for orientation: SwipeActionsOrientation) -> [SwipeAction]? {
-    guard orientation == .right else { return nil }
-    
-    // initialize a SwipeAction object
-    let deleteAction = SwipeAction(style: .destructive, title: "Delete") { _, indexPath in
-      // delete the item from our context
-      self.context.delete(self.items[indexPath.row])
-      // remove the item from the items array
-      self.items.remove(at: indexPath.row)
-      
-      // save our context
-      self.saveItems()
-    }
-    
-    // customize the action appearance
-    deleteAction.image = UIImage(named: "trash")
-    
-    return [deleteAction]
-  }
 }
 
+// MARK: Search Bar Methods
+extension ItemListViewController: UISearchBarDelegate {
 
+  func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+    // if our search text is nil we should not execute any more code and just return
+    guard let searchText = searchBar.text else { return }
+    searchItems(searchText: searchText)
+  }
+
+  func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+    if searchText.count > 0 {
+      searchItems(searchText: searchText)
+    } else if searchText.count == 0 {
+      // show the full list of items
+      loadItems()
+    }
+  }
+
+  // this method's use is restricted to this file
+  fileprivate func searchItems(searchText: String) {
+    // our fetch request for items
+    let fetchRequest: NSFetchRequest<Item> = Item.fetchRequest()
+    
+    // a predicate allows us to create a filter or mapping for our items
+    // [c] means ignore case
+    let predicate = NSPredicate(format: "title CONTAINS[c] %@", searchText)
+    
+    // the sort descriptor allows us to tell the request how we want our data sorted
+    let sortDescriptor = NSSortDescriptor(key: "title", ascending: true)
+    
+    // set the predicate and sort descriptors for on the request
+    fetchRequest.predicate = predicate
+    fetchRequest.sortDescriptors = [sortDescriptor]
+    
+    // retrieve the items with the request we created
+    do {
+      items = try context.fetch(fetchRequest)
+    } catch {
+      print("Error fetching items: \(error)")
+    }
+    
+    // reload our table with our new data
+    tableView.reloadData()
+  }
+}
