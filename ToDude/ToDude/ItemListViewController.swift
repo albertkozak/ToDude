@@ -63,8 +63,25 @@ class ItemListViewController: UITableViewController {
       tableView.reloadData()
   }
   
+  func loadItems() {
+    // create a new fetch request of type NSFetchRequest<Item> - you must provide a type
+    let fetchRequest: NSFetchRequest<Item> = Item.fetchRequest()
+    
+    // wrap our try statement below in a do/catch block so we can handle any errors
+    do {
+      // fetch our items using our fetch request, save them in our items array
+      items = try context.fetch(fetchRequest)
+    } catch {
+      print("Error fetching items: \(error)")
+    }
+    
+    // reload our table to reflect any changes
+    tableView.reloadData()
+  }
+  
   override func viewDidLoad() {
          super.viewDidLoad()
+         loadItems()
      }
   
   override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -85,8 +102,7 @@ class ItemListViewController: UITableViewController {
   
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
       let item = items[indexPath.row]
-    
-      // toggle completed
       item.completed = !item.completed
+      saveItems()
     }
 }
