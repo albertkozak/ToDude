@@ -8,8 +8,9 @@
 
 import UIKit
 import CoreData
+import SwipeCellKit
 
-class ItemListViewController: UITableViewController {
+class ItemListViewController: UITableViewController, SwipeTableViewCellDelegate {
   var items = [Item]()
   let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
   
@@ -82,6 +83,7 @@ class ItemListViewController: UITableViewController {
   override func viewDidLoad() {
          super.viewDidLoad()
          loadItems()
+         tableView.rowHeight = 85.0
      }
   
   override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -90,7 +92,8 @@ class ItemListViewController: UITableViewController {
 
   
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-      let cell = tableView.dequeueReusableCell(withIdentifier: "itemCell", for: indexPath)
+      let cell = tableView.dequeueReusableCell(withIdentifier: "itemCell", for: indexPath) as! SwipeTableViewCell
+      cell.delegate = self
       
       let item = items[indexPath.row]
       
@@ -105,4 +108,26 @@ class ItemListViewController: UITableViewController {
       item.completed = !item.completed
       saveItems()
     }
+  
+  func tableView(_ tableView: UITableView, editActionsForRowAt indexPath: IndexPath, for orientation: SwipeActionsOrientation) -> [SwipeAction]? {
+    guard orientation == .right else { return nil }
+    
+    // initialize a SwipeAction object
+    let deleteAction = SwipeAction(style: .destructive, title: "Delete") { _, indexPath in
+      // delete the item from our context
+      self.context.delete(self.items[indexPath.row])
+      // remove the item from the items array
+      self.items.remove(at: indexPath.row)
+      
+      // save our context
+      self.saveItems()
+    }
+    
+    // customize the action appearance
+    deleteAction.image = UIImage(named: "trash")
+    
+    return [deleteAction]
+  }
 }
+
+
